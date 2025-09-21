@@ -100,27 +100,31 @@ def plot_climatology(daily, clim, metric, today=None, forecast=None):
 
     today_doy = today.timetuple().tm_yday
     doys = np.arange(today_doy - 183, today_doy + 183 + 1)
-    doys = np.mod(doys - 1, 365) + 1
+    doys = np.mod(doys - 1, 365) + 1  # wrap around year
 
-    clim_window = clim.loc[clim.index.isin(doys)]
-    current_window = current_year.loc[current_year.index.isin(doys)]
+    clim_window = clim.loc[clim.index.isin(doys)].dropna()
+    current_window = current_year.loc[current_year.index.isin(doys)].dropna()
+
+    x = clim_window.index.values  # numeric DOY
 
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.fill_between(clim_window.index, clim_window["min"], clim_window["max"],
+    ax.fill_between(x, clim_window["min"].values, clim_window["max"].values,
                     alpha=0.2, label="10y range")
-    ax.plot(clim_window.index, clim_window["mean"], label="10y mean", color="blue")
-    ax.plot(current_window.index, current_window, label=f"{today.year}", color="red")
+    ax.plot(x, clim_window["mean"].values, label="10y mean", color="blue")
+    ax.plot(current_window.index.values, current_window.values,
+            label=f"{today.year}", color="red")
 
     # Overlay forecast (if provided)
     if forecast is not None:
         f_df = compute_daily_metrics(forecast)
         f_df = f_df[f_df.index.year == today.year]
-        f_series = f_df.set_index("doy")[metric]
-        ax.plot(f_series.index, f_series, "--", color="orange", label="Forecast")
+        f_series = f_df.set_index("doy")[metric].dropna()
+        ax.plot(f_series.index.values, f_series.values,
+                "--", color="orange", label="Forecast")
 
     ax.axvline(today_doy, color="k", linestyle="--", label="Today")
     ax.set_title(f"{metric} Climatology vs {today.year} – Bingley, Yorkshire")
-    ax.set_xlabel("Day of Year")
+    ax.set_xlabel("Day of Year (1–365)")
     ax.set_ylabel(metric)
     ax.legend()
     return fig
